@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Coffeetime — Затишна кав'ярня та крафтове обсмаження</title>
+    <script>
+      // Global guard to prevent crashes from browser extensions (e.g., Google Translate, AdBlockers)
+      // that attempt to monkey-patch window.fetch in read-only or sandboxed environments.
+      (function() {
+        try {
+          var originalFetch = window.fetch;
+          Object.defineProperty(window, 'fetch', {
+            configurable: true,
+            enumerable: true,
+            get: function() {
+              return originalFetch;
+            },
+            set: function(val) {
+              originalFetch = val;
+            }
+          });
+        } catch (e) {
+          console.warn('Unable to patch window.fetch descriptor:', e);
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

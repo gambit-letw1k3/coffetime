@@ -1,0 +1,6 @@
+{
+  "name": "Coffeetime - Кав'ярня",
+  "description": "Сучасний, інтерактивний сайт-візитка кав'ярні з унікальним скевоморфним дизайном, паралаксом та кастомним конструктором напоїв.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
