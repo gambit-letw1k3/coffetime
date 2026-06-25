@@ -9,7 +9,7 @@ dotenv.config();
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT || 3000);
 
   // Middleware to parse JSON bodies with large payload limit for base64 images
   app.use(express.json({ limit: "50mb" }));
@@ -281,7 +281,7 @@ async function startServer() {
   });
 
   // Email Configuration (Gmail SMTP or custom provider)
-  const targetEmail = "tutudimakiber@gmail.com";
+  const targetEmail = process.env.SMTP_USER;
 
   // Transporter for sending mail
   const getMailTransporter = () => {
