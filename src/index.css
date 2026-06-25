@@ -1,0 +1,199 @@
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-hand: "Caveat", cursive;
+
+  /* Frosted Coffee Theme Colors */
+  --color-coffee-cream: #FDFBF7;
+  --color-coffee-latte: #F5EFEB;
+  --color-coffee-milk: #D7CCC8;
+  --color-coffee-caramel: #8D6E63;
+  --color-coffee-accent: #6D4C41;
+  --color-coffee-medium: #6D4C41;
+  --color-coffee-dark: #3E2723;
+  --color-coffee-deep: #211007;
+}
+
+/* Frosted Glass Utilities */
+.glass-panel {
+  background: rgba(253, 250, 245, 0.45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 
+    0 8px 32px 0 rgba(62, 39, 35, 0.05),
+    inset 1px 1px 0px rgba(255, 255, 255, 0.6);
+}
+
+.glass-panel-dark {
+  background: rgba(62, 39, 35, 0.35);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 
+    0 8px 32px 0 rgba(0, 0, 0, 0.15),
+    inset 1px 1px 0px rgba(255, 255, 255, 0.1);
+}
+
+.soft-shadow {
+  box-shadow: 0 10px 30px -5px rgba(62, 39, 35, 0.08), 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.soft-inset {
+  box-shadow: inset 2px 2px 5px rgba(62, 39, 35, 0.04), inset -2px -2px 5px rgba(255, 255, 255, 0.8);
+}
+
+.round-card {
+  border-radius: 24px;
+}
+
+/* Custom Skeuomorphic & Frosted Utilities */
+.tactile-card {
+  background: rgba(253, 251, 247, 0.45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 
+    0 8px 32px 0 rgba(62, 39, 35, 0.06),
+    inset 1px 1px 0px rgba(255, 255, 255, 0.7);
+  border-radius: 24px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tactile-card-dark {
+  background: rgba(62, 39, 35, 0.3);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 
+    0 8px 32px 0 rgba(0, 0, 0, 0.15),
+    inset 1px 1px 0px rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
+}
+
+.tactile-btn {
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 
+    0 4px 12px rgba(62, 39, 35, 0.04),
+    inset 1px 1px 0px rgba(255, 255, 255, 0.8);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 9999px;
+}
+
+.tactile-btn:hover {
+  background: rgba(255, 255, 255, 0.75);
+  transform: translateY(-1.5px);
+  box-shadow: 
+    0 6px 16px rgba(62, 39, 35, 0.08),
+    inset 1px 1px 0px rgba(255, 255, 255, 0.95);
+}
+
+.tactile-btn:active, .tactile-btn-pressed {
+  transform: translateY(1px);
+  box-shadow: 
+    inset 2px 2px 5px rgba(62, 39, 35, 0.06),
+    inset -2px -2px 5px rgba(255, 255, 255, 0.4);
+}
+
+.tactile-btn-accent {
+  background: linear-gradient(135deg, rgba(141, 110, 99, 0.82), rgba(109, 76, 65, 0.88));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 
+    0 6px 20px rgba(62, 39, 35, 0.12),
+    inset 1px 1px 0px rgba(255, 255, 255, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 9999px;
+}
+
+.tactile-btn-accent:hover {
+  background: linear-gradient(135deg, rgba(141, 110, 99, 0.92), rgba(109, 76, 65, 0.96));
+  transform: translateY(-1.5px);
+  box-shadow: 
+    0 8px 24px rgba(62, 39, 35, 0.18),
+    inset 1px 1px 0px rgba(255, 255, 255, 0.4);
+}
+
+.tactile-btn-accent:active {
+  transform: translateY(1px);
+  box-shadow: 
+    inset 3px 3px 8px rgba(0, 0, 0, 0.18);
+}
+
+.tactile-input {
+  background: rgba(253, 251, 247, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(215, 204, 200, 0.5);
+  box-shadow: 
+    inset 2px 2px 5px rgba(62, 39, 35, 0.04),
+    inset -1px -1px 0px rgba(255, 255, 255, 0.5);
+  outline: none;
+  transition: all 0.2s ease;
+  border-radius: 16px;
+}
+
+.tactile-input:focus {
+  border-color: rgba(141, 110, 99, 0.8);
+  background: rgba(253, 251, 247, 0.65);
+  box-shadow: 
+    0 0 0 3px rgba(141, 110, 99, 0.12),
+    inset 2px 2px 5px rgba(62, 39, 35, 0.05);
+}
+
+/* Wood texture or paper overlay helper */
+.coffee-grain {
+  background-image: radial-gradient(rgba(111, 78, 55, 0.04) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+
+/* Steam animation */
+@keyframes riseSteam {
+  0% {
+    transform: translateY(10px) translateX(0) scale(0.8);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-20px) translateX(4px) scale(1.1);
+  }
+  80% {
+    opacity: 0.1;
+  }
+  100% {
+    transform: translateY(-50px) translateX(-2px) scale(1.3);
+    opacity: 0;
+  }
+}
+
+.steam-particle {
+  animation: riseSteam 4s ease-in-out infinite;
+}
+
+/* Custom cup handle and plate shadows */
+.skeuo-cup-shadow {
+  filter: drop-shadow(8px 12px 10px rgba(33, 16, 7, 0.15));
+}
+
+.cup-glow {
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 70%);
+}
+
+/* Hide scrollbar but keep functional */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
