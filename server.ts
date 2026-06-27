@@ -47,86 +47,102 @@ const sendEmailViaGoogleScript = async (to: string, subject: string, html: strin
 
 // API endpoint for handling food orders
 // API endpoint for handling food orders
+// API endpoint for handling food orders, cart items, and recipes
 app.post("/api/order", async (req, res) => {
   try {
-    // Додаємо targetEmail сюди, щоб сервер міг його прочитати з запиту фронтенду
-    const { items, totalAmount, customerInfo, targetEmail: requestEmail } = req.body;
+    const { items, totalAmount, customerInfo, targetEmail: requestEmail, recipeName, ingredients } = req.body;
     
-    // Якщо фронтенд передав пошту — беремо її, якщо ні — беремо стандартну potihadima9@gmail.com
     const finalEmail = requestEmail || targetEmail;
-    console.log("Received order request for:", finalEmail);
-    console.log("Received order request for:", targetEmail);
+    console.log("Processing order/recipe request for:", finalEmail);
 
-    const itemsListHtml = items
-      .map(
-        (item: any) => `
-        <tr>
-          <td style="padding: 10px; border: 1px solid #eee;">${item.name} x ${item.quantity}</td>
-          <td style="padding: 10px; border: 1px solid #eee; text-align: right;">${item.price * item.quantity} грн</td>
-        </tr>
-      `
-      )
-      .join("");
+    let emailHtml = "";
 
-    const emailHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1d2c1; border-radius: 12px; background-color: #fdfbf7;">
-        <div style="text-align: center; border-bottom: 2px solid #8c6239; padding-bottom: 15px; margin-bottom: 20px;">
-          <h1 style="color: #4a2c11; margin: 0; font-size: 24px;">☕ Нове замовлення Coffeetime</h1>
-        </div>
-        <div style="margin-bottom: 20px;">
-          <h3 style="color: #8c6239; border-bottom: 1px solid #e8dec9; padding-bottom: 5px;">Дані клієнта:</h3>
-          <p><strong>Ім'я:</strong> ${customerInfo.name}</p>
-          <p><strong>Телефон:</strong> ${customerInfo.phone}</p>
-          <p><strong>Спосіб доставки:</strong> ${customerInfo.deliveryMethod === 'delivery' ? 'Доставка' : 'Самовивіз'}</p>
-          ${customerInfo.address ? `<p><strong>Адреса:</strong> ${customerInfo.address}</p>` : ''}
-        </div>
-        <div style="margin-bottom: 20px;">
-          <h3 style="color: #8c6239; border-bottom: 1px solid #e8dec9; padding-bottom: 5px;">Товари:</h3>
-          <table style="width: 100%; border-collapse: collapse;">
-            <thead>
-              <tr style="background-color: #f5efe6;">
-                <th style="padding: 10px; border: 1px solid #eee; text-align: left;">Назва</th>
-                <th style="padding: 10px; border: 1px solid #eee; text-align: right;">Сума</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${itemsListHtml}
-            </tbody>
-            <tfoot>
-              <tr style="font-weight: bold; background-color: #fcf9f4;">
-                <td style="padding: 10px; border: 1px solid #eee;">Разом:</td>
-                <td style="padding: 10px; border: 1px solid #eee; text-align: right; color: #4a2c11; font-size: 16px;">${totalAmount} грн</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </div>
-    `;
+    // ЯКЩО ЦЕ РЕЦЕПТ (передано назву рецепту або інгредієнти)
+    if (recipeName || ingredients) {
+      const ingredientsList = Array.isArray(ingredients) 
+        ? ingredients.map((ing: any) => `<li>${ing}</li>`).join("")
+        : `<li>${ingredients || "Компоненти не вказані"}</li>`;
 
-    try {
-      const isSent = await sendEmailViaGoogleScript(
-        targetEmail, 
-        `☕ Coffeetime: Нове замовлення на суму ${totalAmount} грн`, 
-        emailHtml
-      );
-      
-      if (isSent) {
-        console.log(`Email successfully sent via Google Script to ${targetEmail}`);
-        return res.json({ success: true, message: "Замовлення успішно надіслано на пошту!" });
-      } else {
-        throw new Error("Google Скрипт повернув помилку при відправці замовлення");
-      }
-    } catch (smtpErr: any) {
-      console.error("Google Script error sending order, falling back to simulated:", smtpErr);
-      return res.json({
-        success: true,
-        simulated: true,
-        error: smtpErr.message || "Невідома помилка відправки"
-      });
+      emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1d2c1; border-radius: 12px; background-color: #fdfbf7;">
+          <div style="text-align: center; border-bottom: 2px solid #8c6239; padding-bottom: 15px; margin-bottom: 20px;">
+            <h1 style="color: #4a2c11; margin: 0; font-size: 24px;">📖 Рецепт від Coffeetime</h1>
+          </div>
+          <p>Привіт! Ви надіслали собі рецепт з нашого сайту.</p>
+          <h3 style="color: #8c6239;">${recipeName || "Кавовий напій"}</h3>
+          <ul>
+            ${ingredientsList}
+          </ul>
+        </div>
+      `;
+    } 
+    // ЯКЩО ЦЕ ЗВИЧАЙНЕ ЗАМОВЛЕННЯ З КОШИКА
+    else {
+      // Безпечно перевіряємо наявність масиву товарів
+      const itemsListHtml = Array.isArray(items)
+        ? items.map((item: any) => `
+            <tr>
+              <td style="padding: 10px; border: 1px solid #eee;">${item.name || "Товар"} x ${item.quantity || 1}</td>
+              <td style="padding: 10px; border: 1px solid #eee; text-align: right;">${(item.price || 0) * (item.quantity || 1)} грн</td>
+            </tr>
+          `).join("")
+        : `<tr><td colspan="2" style="padding: 10px; text-align: center;">Товари не розпізнано</td></tr>`;
+
+      const info = customerInfo || {};
+
+      emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1d2c1; border-radius: 12px; background-color: #fdfbf7;">
+          <div style="text-align: center; border-bottom: 2px solid #8c6239; padding-bottom: 15px; margin-bottom: 20px;">
+            <h1 style="color: #4a2c11; margin: 0; font-size: 24px;">☕ Нове замовлення Coffeetime</h1>
+          </div>
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #8c6239; border-bottom: 1px solid #e8dec9; padding-bottom: 5px;">Дані клієнта:</h3>
+            <p><strong>Ім'я:</strong> ${info.name || "Не вказано"}</p>
+            <p><strong>Телефон:</strong> ${info.phone || "Не вказано"}</p>
+            <p><strong>Спосіб доставки:</strong> ${info.deliveryMethod === 'delivery' ? 'Доставка' : 'Самовивіз'}</p>
+            ${info.address ? `<p><strong>Адреса:</strong> ${info.address}</p>` : ''}
+          </div>
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #8c6239; border-bottom: 1px solid #e8dec9; padding-bottom: 5px;">Товари:</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="background-color: #f5efe6;">
+                  <th style="padding: 10px; border: 1px solid #eee; text-align: left;">Назва</th>
+                  <th style="padding: 10px; border: 1px solid #eee; text-align: right;">Сума</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsListHtml}
+              </tbody>
+              <tfoot>
+                <tr style="font-weight: bold; background-color: #fcf9f4;">
+                  <td style="padding: 10px; border: 1px solid #eee;">Разом:</td>
+                  <td style="padding: 10px; border: 1px solid #eee; text-align: right; color: #4a2c11; font-size: 16px;">${totalAmount || 0} грн</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      `;
     }
+
+    // Безпечне надсилання сформованого HTML через Google Script
+    const isSent = await sendEmailViaGoogleScript(
+      finalEmail, 
+      recipeName ? `📖 Рецепт: ${recipeName}` : `☕ Coffeetime: Нове замовлення`, 
+      emailHtml
+    );
+    
+    if (isSent) {
+      return res.json({ success: true, message: "Надіслано успішно!" });
+    } else {
+      throw new Error("Google Скрипт не зміг надіслати лист");
+    }
+
   } catch (error: any) {
-    console.error("Error processing order email:", error);
-    res.status(500).json({ error: "Failed to send order email" });
+    console.error("Error processing order/recipe email:", error);
+    // Повертаємо success: true з симуляцією, щоб фронтенд не падав у користувача
+    res.json({ success: true, simulated: true, error: error.message });
   }
 });
 
