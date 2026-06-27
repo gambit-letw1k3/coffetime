@@ -316,110 +316,90 @@ const sendEmailViaGoogleScript = async (to: string, subject: string, html: strin
 };
 
   // API endpoint to handle order or customizable coffee submissions
-  app.post("/api/order", async (req, res) => {
+ // API endpoint for handling general contact / reservation forms
+  app.post("/api/contact", async (req, res) => {
     try {
-      const orderData = req.body;
-      console.log("Received order request:", orderData);
+      const { name, email, phone, message, date, time, guests, type } = req.body;
+      console.log("Received contact/reservation request:", req.body);
 
-      // Create email HTML body
-      let itemsListHtml = "";
-      if (orderData.items && Array.isArray(orderData.items)) {
-        itemsListHtml = orderData.items.map((item: any, idx: number) => {
-          const details = [];
-          if (item.milk) details.push(`Молоко: ${item.milk}`);
-          if (item.syrup) details.push(`Сироп: ${item.syrup}`);
-          if (item.selectedAddons && Array.isArray(item.selectedAddons)) {
-            details.push(`Додатки: ${item.selectedAddons.join(", ")}`);
-          }
-          return `
-            <li style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #eee;">
-              <strong style="color: #4a2c11; font-size: 16px;">${idx + 1}. ${item.name}</strong> (${item.category || "Напій"})
-              <br/>
-              <span style="color: #666; font-size: 14px;">Кількість: ${item.quantity || 1} | Ціна: ${item.price} грн</span>
-              ${details.length > 0 ? `<br/><span style="color: #d27c2d; font-size: 13px;">${details.join(" | ")}</span>` : ""}
-            </li>
-          `;
-        }).join("");
-      } else if (orderData.isCustomCoffee) {
-        // From configurator
-        const details = [];
-        details.push(`Розмір: ${orderData.size === 'small' ? 'Маленький (200мл)' : orderData.size === 'medium' ? 'Середній (340мл)' : 'Великий (450мл)'}`);
-        details.push(`Обсмаження: ${orderData.roast === 'light' ? 'Світле' : orderData.roast === 'medium' ? 'Середнє' : 'Темне'}`);
-        details.push(`Молоко: ${orderData.milk || "Немає"}`);
-        details.push(`Сироп: ${orderData.syrup || "Немає"}`);
-        if (orderData.extraEspresso) details.push("Подвійний еспресо");
-        if (orderData.latteArt) details.push("Латте-арт");
-
-        itemsListHtml = `
-          <li style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #eee;">
-            <strong style="color: #4a2c11; font-size: 16px;">Кастомна кава (З конструктора)</strong>
-            <br/>
-            <span style="color: #666; font-size: 14px;">Ціна: ${orderData.totalPrice} грн</span>
-            <br/>
-            <span style="color: #d27c2d; font-size: 13px;">${details.join(" | ")}</span>
-          </li>
-        `;
-      }
-
-      const totalAmount = orderData.totalAmount || orderData.totalPrice || 0;
-      const customerName = orderData.customerName || "Гість";
-      const customerPhone = orderData.customerPhone || "Не вказано";
+      const isReservation = type === "reservation";
+      const subject = isReservation 
+        ? `📅 Coffeetime: Нове бронювання столика від ${name}`
+        : `✉️ Coffeetime: Нове повідомлення зворотного зв'язку від ${name}`;
 
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1d2c1; border-radius: 12px; background-color: #fdfbf7;">
           <div style="text-align: center; border-bottom: 2px solid #8c6239; padding-bottom: 15px; margin-bottom: 20px;">
-            <h1 style="color: #4a2c11; margin: 0; font-size: 24px;">☕ Coffeetime - Нове замовлення</h1>
-            <p style="color: #8c6239; margin: 5px 0 0 0; font-size: 14px;">Дякуємо, що обираєте нас!</p>
-          </div>
-
-          <div style="margin-bottom: 20px; background-color: #fcf9f4; padding: 12px; border-radius: 8px; border: 1px solid #eee; text-align: left;">
-            <p style="margin: 0 0 6px 0; font-size: 14px; color: #4a2c11;"><strong>Клієнт:</strong> ${customerName}</p>
-            <p style="margin: 0; font-size: 14px; color: #4a2c11;"><strong>Телефон:</strong> <a href="tel:${customerPhone}" style="color: #8c6239; font-weight: bold; text-decoration: none;">${customerPhone}</a></p>
+            <h1 style="color: #4a2c11; margin: 0; font-size: 24px;">${isReservation ? '📅 Нове бронювання' : '✉️ Нове повідомлення'}</h1>
+            <p style="color: #8c6239; margin: 5px 0 0 0; font-size: 14px;">Отримано через форму на сайті Coffeetime</p>
           </div>
           
-          <div style="margin-bottom: 25px;">
-            <h3 style="color: #4a2c11; border-left: 4px solid #8c6239; padding-left: 10px; margin: 0 0 10px 0;">Інформація про замовлення</h3>
-            <ul style="list-style: none; padding: 0; margin: 0;">
-              ${itemsListHtml}
-            </ul>
-            <div style="text-align: right; margin-top: 15px; padding-top: 10px; border-top: 2px dashed #e1d2c1;">
-              <strong style="font-size: 18px; color: #4a2c11;">Загальна сума: ${totalAmount} грн</strong>
-            </div>
+          <div style="margin-bottom: 20px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+              <tr style="background-color: #fcf9f4;">
+                <td style="padding: 10px; border: 1px solid #eee; font-weight: bold; width: 30%; color: #4a2c11;">Ім'я:</td>
+                <td style="padding: 10px; border: 1px solid #eee; color: #333;">${name}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; border: 1px solid #eee; font-weight: bold; color: #4a2c11;">Телефон:</td>
+                <td style="padding: 10px; border: 1px solid #eee; color: #333;">${phone || "Не вказано"}</td>
+              </tr>
+              <tr style="background-color: #fcf9f4;">
+                <td style="padding: 10px; border: 1px solid #eee; font-weight: bold; color: #4a2c11;">Email:</td>
+                <td style="padding: 10px; border: 1px solid #eee; color: #333;">${email || "Не вказано"}</td>
+              </tr>
+              ${isReservation ? `
+              <tr>
+                <td style="padding: 10px; border: 1px solid #eee; font-weight: bold; color: #4a2c11;">Дата бронювання:</td>
+                <td style="padding: 10px; border: 1px solid #eee; color: #333; font-weight: bold;">${date}</td>
+              </tr>
+              <tr style="background-color: #fcf9f4;">
+                <td style="padding: 10px; border: 1px solid #eee; font-weight: bold; color: #4a2c11;">Час:</td>
+                <td style="padding: 10px; border: 1px solid #eee; color: #333; font-weight: bold;">${time}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; border: 1px solid #eee; font-weight: bold; color: #4a2c11;">Кількість гостей:</td>
+                <td style="padding: 10px; border: 1px solid #eee; color: #333;">${guests || 1} осіб</td>
+              </tr>
+              ` : ''}
+              ${message ? `
+              <tr style="background-color: #fcf9f4;">
+                <td style="padding: 10px; border: 1px solid #eee; font-weight: bold; color: #4a2c11; vertical-align: top;">Повідомлення:</td>
+                <td style="padding: 10px; border: 1px solid #eee; color: #333; white-space: pre-line;">${message}</td>
+              </tr>
+              ` : ''}
+            </table>
           </div>
           
-          <div style="background-color: #f5efe6; padding: 15px; border-radius: 8px; border: 1px solid #e8dec9; text-align: center;">
-            <p style="margin: 0; font-size: 14px; color: #4a2c11;">
-              Замовлення отримано системою. Співробітники вже підготовлені до видачі!
+          <div style="background-color: #f5efe6; padding: 15px; border-radius: 8px; border: 1px solid #e8dec9; text-align: center; margin-top: 20px;">
+            <p style="margin: 0; font-size: 13px; color: #4a2c11;">
+              Будь ласка, зв'яжіться з гостем якнайшвидше для підтвердження або відповіді.
             </p>
-          </div>
-          
-          <div style="text-align: center; margin-top: 25px; font-size: 12px; color: #888;">
-            <p style="margin: 5px 0;">вул. Пилипа Орлика, 12 | Coffeetime App</p>
           </div>
         </div>
       `;
 
       try {
-      // Відправка замовлення через Google Скрипт
-      const isSent = await sendEmailViaGoogleScript(
-        targetEmail, 
-        `☕ Coffeetime: Нове замовлення на суму ${totalAmount} грн`, 
-        emailHtml
-      );
-      
-      if (isSent) {
-        console.log(`Email successfully sent via Google Script to ${targetEmail}`);
-        return res.json({ success: true, message: "Замовлення успішно надіслано на пошту!" });
-      } else {
-        throw new Error("Google Скрипт повернув помилку при відправці замовлення");
+        // Відправка форми контактів через Google Скрипт
+        const isSent = await sendEmailViaGoogleScript(targetEmail, subject, emailHtml);
+        
+        if (isSent) {
+          console.log(`Contact Email successfully sent via Google Script to ${targetEmail}`);
+          return res.json({ success: true, message: "Повідомлення надіслано!" });
+        } else {
+          throw new Error("Google Скрипт повернув помилку при відправці контактної форми");
+        }
+      } catch (smtpErr: any) {
+        console.error("Google Script error sending contact email, falling back to simulated:", smtpErr);
+        return res.json({
+          success: true,
+          simulated: true,
+          error: smtpErr.message || "Невідома помилка відправки"
+        });
       }
-    } catch (smtpErr: any) {
-      console.error("Google Script error sending order, falling back to simulated:", smtpErr);
-      return res.json({
-        success: true,
-        simulated: true,
-        error: smtpErr.message || "Невідома помилка відправки"
-      });
+    } catch (error: any) {
+      console.error("Error sending contact email:", error);
+      res.status(500).json({ error: "Failed to process request" });
     }
   });
 
