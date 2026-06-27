@@ -46,9 +46,15 @@ const sendEmailViaGoogleScript = async (to: string, subject: string, html: strin
 };
 
 // API endpoint for handling food orders
+// API endpoint for handling food orders
 app.post("/api/order", async (req, res) => {
   try {
-    const { items, totalAmount, customerInfo } = req.body;
+    // Додаємо targetEmail сюди, щоб сервер міг його прочитати з запиту фронтенду
+    const { items, totalAmount, customerInfo, targetEmail: requestEmail } = req.body;
+    
+    // Якщо фронтенд передав пошту — беремо її, якщо ні — беремо стандартну potihadima9@gmail.com
+    const finalEmail = requestEmail || targetEmail;
+    console.log("Received order request for:", finalEmail);
     console.log("Received order request for:", targetEmail);
 
     const itemsListHtml = items
