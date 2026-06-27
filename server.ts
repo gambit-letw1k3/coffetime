@@ -284,9 +284,10 @@ async function startServer() {
   const targetEmail = process.env.SMTP_USER;
 
   // Transporter for sending mail
+  // Transporter for sending mail
   const getMailTransporter = () => {
     const host = process.env.SMTP_HOST;
-    const port = parseInt(process.env.SMTP_PORT || "587");
+    const port = parseInt(process.env.SMTP_PORT || "465");
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
 
@@ -294,11 +295,19 @@ async function startServer() {
       return nodemailer.createTransport({
         host: host || "smtp.gmail.com",
         port: port,
-        secure: port === 465,
+        secure: port === 465, // true для 465, false для інших портів
         auth: {
           user,
           pass,
         },
+        // КРИТИЧНО ДЛЯ RENDER: примусове використання IPv4
+        dnsNameResolver: (family, hostname, cb) => {
+          require('dns').lookup(hostname, { family: 4 }, cb);
+        },
+        tls: {
+          rejectUnauthorized: false // ігноруємо можливі проблеми з сертифікатами хостингу
+        },
+        connectionTimeout: 15000
       });
     }
     return null;
