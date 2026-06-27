@@ -6,8 +6,22 @@ import dotenv from "dotenv";
 // Завантаження конфігурації з .env
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import express from "express";
+import path from "path";
+import dotenv from "dotenv";
+
+// Завантаження конфігурації з .env
+dotenv.config();
+
+// Для CommonJS (CJS) ці змінні вже існують глобально, 
+// тому ми просто використовуємо їх або оголошуємо сумісність:
+const __dirname = path.resolve();
+
+const app = express();
+app.use(express.json());
+
+// Роздача статичних файлів з папки dist (зібраний фронтенд)
+app.use(express.static(path.join(__dirname, "dist")));
 
 const app = express();
 app.use(express.json());
