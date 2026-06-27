@@ -285,33 +285,35 @@ async function startServer() {
 
   // Transporter for sending mail
   // Transporter for sending mail
-  const getMailTransporter = () => {
-    const host = process.env.SMTP_HOST;
-    const port = parseInt(process.env.SMTP_PORT || "465");
-    const user = process.env.SMTP_USER;
-    const pass = process.env.SMTP_PASS;
+  // Функція для відправки через твоє Google-посилання
+const sendEmailViaGoogleScript = async (to: string, subject: string, html: string) => {
+  const scriptUrl = process.env.GOOGLE_SCRIPT_URL;
+  
+  if (!scriptUrl) {
+    console.error("Помилка: GOOGLE_SCRIPT_URL не налаштовано в .env!");
+    return false;
+  }
 
-    if (user && pass) {
-      return nodemailer.createTransport({
-        host: host || "smtp.gmail.com",
-        port: port,
-        secure: port === 465, // true для 465, false для інших портів
-        auth: {
-          user,
-          pass,
-        },
-        // КРИТИЧНО ДЛЯ RENDER: примусове використання IPv4
-        dnsNameResolver: (family, hostname, cb) => {
-          require('dns').lookup(hostname, { family: 4 }, cb);
-        },
-        tls: {
-          rejectUnauthorized: false // ігноруємо можливі проблеми з сертифікатами хостингу
-        },
-        connectionTimeout: 15000
-      });
-    }
-    return null;
-  };
+  try {
+    // Робимо звичайний інтернет-запит, який Render НЕ блокує
+    const response = await fetch(scriptUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: to,
+        subject: subject,
+        html: html,
+        token: "MySuperSecretToken123" // Переконайся, що такий самий токен вказано в самому Google Скрипті
+      })
+    });
+
+    const result = await response.json();
+    return result.success;
+  } catch (err) {
+    console.error("Помилка відправки через Google Скрипт:", err);
+    return false;
+  }
+};
 
   // API endpoint to handle order or customizable coffee submissions
   app.post("/api/order", async (req, res) => {
@@ -397,40 +399,27 @@ async function startServer() {
         </div>
       `;
 
-      const transporter = getMailTransporter();
-      if (transporter) {
-        try {
-          await transporter.sendMail({
-            from: `"Coffeetime" <${process.env.SMTP_USER}>`,
-            to: targetEmail,
-            subject: `☕ Coffeetime: Нове замовлення на суму ${totalAmount} грн`,
-            html: emailHtml,
-          });
-          console.log(`Email successfully sent via SMTP to ${targetEmail}`);
-          return res.json({ success: true, message: "Замовлення успішно надіслано на пошту!" });
-        } catch (smtpErr: any) {
-          console.error("SMTP error sending order, falling back to simulated:", smtpErr);
-          return res.json({
-            success: true,
-            simulated: true,
-            error: smtpErr.message || "Невідома помилка SMTP"
-          });
-        }
+      try {
+      // Відправка замовлення через Google Скрипт
+      const isSent = await sendEmailViaGoogleScript(
+        targetEmail, 
+        `☕ Coffeetime: Нове замовлення на суму ${totalAmount} грн`, 
+        emailHtml
+      );
+      
+      if (isSent) {
+        console.log(`Email successfully sent via Google Script to ${targetEmail}`);
+        return res.json({ success: true, message: "Замовлення успішно надіслано на пошту!" });
       } else {
-        console.log("=== [SMTP NOT CONFIG] ===");
-        console.log(`To: ${targetEmail}`);
-        console.log(`Subject: ☕ Coffeetime: Нове замовлення на суму ${totalAmount} грн`);
-        console.log(`HTML Body: \n${emailHtml}`);
-        console.log("=========================");
-        return res.json({ 
-          success: true, 
-          simulated: true, 
-          message: "Замовлення збережено на сервері! (Для реального надсилання налаштуйте SMTP у .env)" 
-        });
+        throw new Error("Google Скрипт повернув помилку при відправці замовлення");
       }
-    } catch (error: any) {
-      console.error("Error processing order email:", error);
-      res.status(500).json({ error: "Failed to send order email" });
+    } catch (smtpErr: any) {
+      console.error("Google Script error sending order, falling back to simulated:", smtpErr);
+      return res.json({
+        success: true,
+        simulated: true,
+        error: smtpErr.message || "Невідома помилка відправки"
+      });
     }
   });
 
@@ -497,37 +486,29 @@ async function startServer() {
         </div>
       `;
 
-      const transporter = getMailTransporter();
-      if (transporter) {
-        try {
-          await transporter.sendMail({
-            from: `"Coffeetime Web" <${process.env.SMTP_USER}>`,
-            to: targetEmail,
-            subject: subject,
-            html: emailHtml,
-          });
-          console.log(`Contact Email successfully sent to ${targetEmail}`);
+      try {
+        // Відправка форми контактів через Google Скрипт
+        const isSent = await sendEmailViaGoogleScript(targetEmail, subject, emailHtml);
+        
+        if (isSent) {
+          console.log(`Contact Email successfully sent via Google Script to ${targetEmail}`);
           return res.json({ success: true, message: "Повідомлення надіслано!" });
-        } catch (smtpErr: any) {
-          console.error("SMTP error sending contact email, falling back to simulated:", smtpErr);
-          return res.json({
-            success: true,
-            simulated: true,
-            error: smtpErr.message || "Невідома помилка SMTP"
-          });
+        } else {
+          throw new Error("Google Скрипт повернув помилку при відправці контактної форми");
         }
-      } else {
-        console.log("=== [SMTP NOT CONFIG] ===");
-        console.log(`To: ${targetEmail}`);
-        console.log(`Subject: ${subject}`);
-        console.log(`HTML Body: \n${emailHtml}`);
-        console.log("=========================");
-        return res.json({ 
-          success: true, 
-          simulated: true, 
-          message: "Повідомлення отримано! (Для надсилання на пошту налаштуйте SMTP у .env)" 
+      } catch (smtpErr: any) {
+        console.error("Google Script error sending contact email, falling back to simulated:", smtpErr);
+        return res.json({
+          success: true,
+          simulated: true,
+          error: smtpErr.message || "Невідома помилка відправки"
         });
       }
+    } catch (error: any) {
+      console.error("Error sending contact email:", error);
+      res.status(500).json({ error: "Failed to process request" });
+    }
+  });
     } catch (error: any) {
       console.error("Error sending contact email:", error);
       res.status(500).json({ error: "Failed to process request" });
