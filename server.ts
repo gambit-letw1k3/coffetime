@@ -1,33 +1,18 @@
 import express from "express";
 import path from "path";
-import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 
 // Завантаження конфігурації з .env
 dotenv.config();
 
-import express from "express";
-import path from "path";
-import dotenv from "dotenv";
-
-// Завантаження конфігурації з .env
-dotenv.config();
-
-// Для CommonJS (CJS) ці змінні вже існують глобально, 
-// тому ми просто використовуємо їх або оголошуємо сумісність:
-const __dirname = path.resolve();
-
 const app = express();
 app.use(express.json());
 
-// Роздача статичних файлів з папки dist (зібраний фронтенд)
-app.use(express.static(path.join(__dirname, "dist")));
-
-const app = express();
-app.use(express.json());
+// Надійне визначення поточної папки для CommonJS в esbuild
+const currentDir = path.resolve();
 
 // Роздача статичних файлів з папки dist (зібраний фронтенд)
-app.use(express.static(path.join(__dirname, "dist")));
+app.use(express.static(path.join(currentDir, "dist")));
 
 const targetEmail = process.env.MAIL_TO || "potihadima9@gmail.com";
 
@@ -227,7 +212,7 @@ app.post("/api/contact", async (req, res) => {
 
 // Усі інші GET-запити перенаправляються на фронтенд
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "dist", "index.html"));
+  res.sendFile(path.join(currentDir, "dist", "index.html"));
 });
 
 const PORT = process.env.PORT || 10000;
