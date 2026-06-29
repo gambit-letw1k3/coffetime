@@ -1,15 +1,46 @@
 import express from "express";
 import path from "path";
 import dotenv from "dotenv";
+import fs from "fs";
 
 // Завантаження конфігурації з .env
 dotenv.config();
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
 
 // Надійне визначення поточної папки для CommonJS в esbuild
 const currentDir = path.resolve();
+
+// Шлях до файлу бази даних JSON
+const dbPath = path.join(currentDir, "src", "data", "coffeetime_db.json");
+
+// Допоміжні функції для роботи з базою даних адмінки
+const readDb = () => {
+  try {
+    if (fs.existsSync(dbPath)) {
+      const fileContent = fs.readFileSync(dbPath, "utf-8");
+      return JSON.parse(fileContent);
+    }
+  } catch (err) {
+    console.error("Помилка читання coffeetime_db.json:", err);
+  }
+  return null;
+};
+
+const writeDb = (data: any) => {
+  try {
+    const dir = path.dirname(dbPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), "utf-8");
+    return true;
+  } catch (err) {
+    console.error("Помилка запису в coffeetime_db.json:", err);
+    return false;
+  }
+};
 
 // Роздача статичних файлів з папки dist (зібраний фронтенд)
 app.use(express.static(path.join(currentDir, "dist")));
@@ -33,7 +64,7 @@ const sendEmailViaGoogleScript = async (to: string, subject: string, html: strin
         to: to,
         subject: subject,
         html: html,
-        token: "MySuperSecretToken123" // Має збігатися з токеном у Google Скрипті
+        token: "MySuperSecretToken123"
       })
     });
 
@@ -45,8 +76,41 @@ const sendEmailViaGoogleScript = async (to: string, subject: string, html: strin
   }
 };
 
-// API endpoint for handling food orders
-// API endpoint for handling food orders
+// === МАРШРУТИ АДМІН-ПАНЕЛІ ===
+
+// Маршрут для авторизації в адмінці
+app.post("/api/login", (req, res) => {
+  const { username, password } = req.body;
+  
+  // Логін та пароль прописані тут
+  if (username === "admin" && password === "admin123") {
+    return res.json({ success: true, token: "admin-token-xyz" });
+  }
+  res.status(401).json({ error: "Невірний логін або пароль" });
+});
+
+// Отримання даних для адмінки та фронтенду
+app.get("/api/db", (req, res) => {
+  const db = readDb();
+  if (!db) {
+    return res.status(500).json({ error: "Не вдалося завантажити базу даних" });
+  }
+  res.json(db);
+});
+
+// Збереження оновлених даних з адмінки
+app.post("/api/db", (req, res) => {
+  const success = writeDb(req.body);
+  if (success) {
+    res.json({ success: true });
+  } else {
+    res.status(500).json({ error: "Не вдалося зберегти зміни" });
+  }
+});
+
+
+// === МАРШРУТИ НАДСИЛАННЯ ЛИСТІВ ===
+
 // API endpoint for handling food orders, cart items, and recipes
 app.post("/api/order", async (req, res) => {
   try {
@@ -57,7 +121,7 @@ app.post("/api/order", async (req, res) => {
 
     let emailHtml = "";
 
-    // ЯКЩО ЦЕ РЕЦЕПТ (передано назву рецепту або інгредієнти)
+    // ЯКЩО ЦЕ РЕЦЕПТ
     if (recipeName || ingredients) {
       const ingredientsList = Array.isArray(ingredients) 
         ? ingredients.map((ing: any) => `<li>${ing}</li>`).join("")
@@ -78,7 +142,6 @@ app.post("/api/order", async (req, res) => {
     } 
     // ЯКЩО ЦЕ ЗВИЧАЙНЕ ЗАМОВЛЕННЯ З КОШИКА
     else {
-      // Безпечно перевіряємо наявність масиву товарів
       const itemsListHtml = Array.isArray(items)
         ? items.map((item: any) => `
             <tr>
@@ -126,7 +189,6 @@ app.post("/api/order", async (req, res) => {
       `;
     }
 
-    // Безпечне надсилання сформованого HTML через Google Script
     const isSent = await sendEmailViaGoogleScript(
       finalEmail, 
       recipeName ? `📖 Рецепт: ${recipeName}` : `☕ Coffeetime: Нове замовлення`, 
@@ -141,7 +203,6 @@ app.post("/api/order", async (req, res) => {
 
   } catch (error: any) {
     console.error("Error processing order/recipe email:", error);
-    // Повертаємо success: true з симуляцією, щоб фронтенд не падав у користувача
     res.json({ success: true, simulated: true, error: error.message });
   }
 });
@@ -200,34 +261,20 @@ app.post("/api/contact", async (req, res) => {
             ` : ''}
           </table>
         </div>
-        
-        <div style="background-color: #f5efe6; padding: 15px; border-radius: 8px; border: 1px solid #e8dec9; text-align: center; margin-top: 20px;">
-          <p style="margin: 0; font-size: 13px; color: #4a2c11;">
-            Будь ласка, зв'яжіться з гостем якнайшвидше для підтвердження або відповіді.
-          </p>
-        </div>
       </div>
     `;
 
     try {
       const isSent = await sendEmailViaGoogleScript(targetEmail, subject, emailHtml);
-      
       if (isSent) {
-        console.log(`Contact Email successfully sent via Google Script to ${targetEmail}`);
         return res.json({ success: true, message: "Повідомлення надіслано!" });
       } else {
         throw new Error("Google Скрипт повернув помилку при відправці контактної форми");
       }
     } catch (smtpErr: any) {
-      console.error("Google Script error sending contact email, falling back to simulated:", smtpErr);
-      return res.json({
-        success: true,
-        simulated: true,
-        error: smtpErr.message || "Невідома помилка відправки"
-      });
+      return res.json({ success: true, simulated: true, error: smtpErr.message });
     }
   } catch (error: any) {
-    console.error("Error sending contact email:", error);
     res.status(500).json({ error: "Failed to process request" });
   }
 });
