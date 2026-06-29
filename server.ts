@@ -3,19 +3,19 @@ import path from "path";
 import dotenv from "dotenv";
 import fs from "fs";
 
-// Завантаження конфігурації з .env
+// Загрузка конфигурации из .env
 dotenv.config();
 
 const app = express();
 app.use(express.json({ limit: "50mb" }));
 
-// Надійне визначення поточної папки
+// Надежное определение текущей папки
 const currentDir = path.resolve();
 
-// Шлях до файлу бази даних JSON
+// Путь к файлу базы данных JSON
 const dbPath = path.join(currentDir, "src", "data", "coffeetime_db.json");
 
-// Допоміжні функції для роботи з базою даних
+// Вспомогательные функции для работы с базой данных
 const readDb = () => {
   try {
     if (fs.existsSync(dbPath)) {
@@ -23,7 +23,7 @@ const readDb = () => {
       return JSON.parse(fileContent);
     }
   } catch (err) {
-    console.error("Помилка читання coffeetime_db.json:", err);
+    console.error("Ошибка чтения coffeetime_db.json:", err);
   }
   return {};
 };
@@ -37,21 +37,21 @@ const writeDb = (data: any) => {
     fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), "utf-8");
     return true;
   } catch (err) {
-    console.error("Помилка запису в coffeetime_db.json:", err);
+    console.error("Ошибка записи в coffeetime_db.json:", err);
     return false;
   }
 };
 
-// Роздача статичних файлів фронтенду
+// Раздача статических файлов фронтенда
 app.use(express.static(path.join(currentDir, "dist")));
 
 const targetEmail = process.env.MAIL_TO || "potihadima9@gmail.com";
 
-// Функція для відправки листів через Google Скрипт
+// Функция для отправки писем через Google Скрипт
 const sendEmailViaGoogleScript = async (to: string, subject: string, html: string) => {
   const scriptUrl = process.env.GOOGLE_SCRIPT_URL;
   if (!scriptUrl) {
-    console.error("GOOGLE_SCRIPT_URL не налаштовано в .env!");
+    console.error("GOOGLE_SCRIPT_URL не настроен в .env!");
     return false;
   }
   try {
@@ -68,67 +68,69 @@ const sendEmailViaGoogleScript = async (to: string, subject: string, html: strin
     const result = await response.json();
     return result.success;
   } catch (err) {
-    console.error("Помилка відправки через Google Скрипт:", err);
+    console.error("Ошибка отправки через Google Скрипт:", err);
     return false;
   }
 };
 
-// === МАРШРУТИ АДМІН-ПАНЕЛІ ===
+// === МАРШРУТЫ АДМИН-ПАНЕЛИ ===
 
-// 1. Авторизація в адмінці
+// 1. Авторизация в админке
 app.post("/api/admin/login", (req, res) => {
   const { username, password } = req.body;
   const db = readDb();
   
-  // Якщо в БД ще немає збережених credentials, використовуємо дефолтні
+  // Если в БД еще нет сохраненных credentials, используем дефолтные
   const validUsername = db?.credentials?.username || "admin";
   const validPassword = db?.credentials?.password || "admin123";
   
   if (username === validUsername && password === validPassword) {
     return res.json({ success: true, token: "admin-token-xyz" });
   }
-  res.status(401).json({ error: "Невірний логін або пароль" });
+  res.status(401).json({ error: "Неверный логин или пароль" });
 });
 
-// 2. Зміна логіну та паролю (БЕЗ затирання контенту сайту!)
+// 2. Смена логина и пароля
 app.post("/api/admin/credentials", (req, res) => {
   const { username, password } = req.body;
   
   if (!username || !password) {
-    return res.status(400).json({ error: "Логін та пароль обов'язкові" });
+    return res.status(400).json({ error: "Логин и пароль обязательны" });
   }
 
   const db = readDb() || {};
   
-  // Оновлюємо ТІЛЬКИ вузол credentials, зберігаючи решту структури бази даних
+  // Обновляем ТОЛЬКО узел credentials, сохраняя весь остальной контент
   db.credentials = { username, password };
 
   if (writeDb(db)) {
-    res.json({ success: true, message: "Дані доступу успішно оновлено!" });
+    res.json({ success: true, message: "Данные доступа успешно обновлены!" });
   } else {
-    res.status(500).json({ error: "Не вдалося зберегти нові дані доступу" });
+    res.status(500).json({ error: "Не удалось сохранить новые данные доступа" });
   }
 });
 
-// 3. Отримання даних для адмінки та фронтенду
+// 3. Получение данных для фронтенда
 app.get("/api/db", (req, res) => {
   const db = readDb() || {};
-  // Повертаємо всю базу даних на запит клієнта
+  
+  // ВАЖНО: Если фронтенд ожидает чистые данные без оберток, 
+  // отдаем весь объект БД. Фронтенд сам разберется с полями контента.
   res.json(db);
 });
 
-// 4. Гнучке збереження оновленого контенту сайту (БЕЗ затирання пароля та полів!)
+// 4. Универсальное сохранение контента сайта (БЕЗ затирания пароля!)
 app.post(["/api/db", "/api/admin/data"], (req, res) => {
   const db = readDb() || {};
   const incomingData = req.body;
 
-  // КРОК 1: Завжди резервуємо діючі паролі від затирання
+  // Шаг 1: Спасаем текущий рабочий пароль админа от затирания
   const currentCredentials = db.credentials;
 
-  // КРОК 2: Визначаємо структуру отриманих даних
+  // Шаг 2: Интеллектуальный анализ входящей структуры фронтенда
   if (incomingData && typeof incomingData === "object") {
     
-    // Сценарій А: Якщо фронтенд прислав дані всередині ключа { data: ... }
+    // Если фронтенд прислал данные в обертке { data: { ... } }
     if (incomingData.data !== undefined) {
       if (typeof incomingData.data === "object" && !Array.isArray(incomingData.data)) {
         Object.assign(db, incomingData.data);
@@ -136,72 +138,79 @@ app.post(["/api/db", "/api/admin/data"], (req, res) => {
         db.data = incomingData.data;
       }
     } 
-    // Сценарій Б: Якщо фронтенд передав чистий плоский об'єкт
+    // Если фронтенд прислал чистый плоский объект контента
     else {
-      // Щоб уникнути накопичення сміття, оновлюємо тільки кореневі ключі контенту,
-      // які передав фронтенд (наприклад: products, settings, reviews)
+      // Мержим новые поля в базу данных
       Object.assign(db, incomingData);
     }
   }
 
-  // КРОК 3: Примусово повертаємо паролі на місце
+  // Шаг 3: Возвращаем пароль на законное место
   if (currentCredentials) {
     db.credentials = currentCredentials;
   }
 
-  // КРОК 4: Записуємо оновлену структуру у файл
+  // Шаг 4: Записываем всё в файл
   if (writeDb(db)) {
     res.json({ success: true });
   } else {
-    res.status(500).json({ error: "Не вдалося зберегти зміни контенту" });
+    res.status(500).json({ error: "Не удалось сохранить изменения контента" });
   }
 });
 
 
-// === МАРШРУТИ НАДСИЛАННЯ ЛИСТІВ ===
+// === МАРШРУТЫ ОТПРАВКИ ПИСЕМ ===
 
 app.post("/api/order", async (req, res) => {
   try {
-    const { items, totalAmount, customerInfo, targetEmail: requestEmail, recipeName, ingredients } = req.body;
+    // Пишем лог в консоль сервера, чтобы точно видеть структуру данных от фронтенда
+    console.log("ПОЛУЧЕН ЗАКАЗ. Тело запроса (req.body):", JSON.stringify(req.body, null, 2));
+
+    const { items, totalAmount, customerInfo, customer, name, phone, targetEmail: requestEmail, recipeName, ingredients } = req.body;
     const finalEmail = requestEmail || targetEmail;
+    
+    // Интеллектуальный поиск данных клиента (защита от разных названий полей на фронтенде)
+    const clientName = customerInfo?.name || customer?.name || name || "Не указано";
+    const clientPhone = customerInfo?.phone || customer?.phone || phone || "Не указано";
+
     let emailHtml = "";
 
+    // Обработка отправки рецепта
     if (recipeName || ingredients) {
       const ingredientsList = Array.isArray(ingredients) 
         ? ingredients.map((ing: any) => `<li>${ing}</li>`).join("")
-        : `<li>${ingredients || "Компоненти не вказані"}</li>`;
+        : `<li>${ingredients || "Компоненты не указаны"}</li>`;
 
       emailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1d2c1; border-radius: 12px; background-color: #fdfbf7;">
           <div style="text-align: center; border-bottom: 2px solid #8c6239; padding-bottom: 15px; margin-bottom: 20px;">
-            <h1 style="color: #4a2c11; margin: 0; font-size: 24px;">📖 Рецепт від Coffeetime</h1>
+            <h1 style="color: #4a2c11; margin: 0; font-size: 24px;">📖 Рецепт от Coffeetime</h1>
           </div>
-          <p>Привіт! Ви надіслали собі рецепт з нашого сайту.</p>
-          <h3 style="color: #8c6239;">${recipeName || "Кавовий напій"}</h3>
+          <p>Привет! Вы отправили себе рецепт с нашего сайта.</p>
+          <h3 style="color: #8c6239;">${recipeName || "Кофейный напиток"}</h3>
           <ul>${ingredientsList}</ul>
         </div>
       `;
     } else {
+      // Обработка обычного заказа товаров
       const itemsListHtml = Array.isArray(items)
         ? items.map((item: any) => `
             <tr>
-              <td style="padding: 10px; border: 1px solid #eee;">${item.name || "Товар"} x ${item.quantity || 1}</td>
-              <td style="padding: 10px; border: 1px solid #eee; text-align: right;">${(item.price || 0) * (item.quantity || 1)} грн</td>
+              <td style="padding: 10px; border: 1px solid #eee;">${item.name || "Товар"} x ${item.quantity || item.count || 1}</td>
+              <td style="padding: 10px; border: 1px solid #eee; text-align: right;">${(item.price || 0) * (item.quantity || item.count || 1)} грн</td>
             </tr>
           `).join("")
-        : `<tr><td colspan="2" style="padding: 10px; text-align: center;">Товари не розпізнано</td></tr>`;
-
-      const info = customerInfo || {};
+        : `<tr><td colspan="2" style="padding: 10px; text-align: center;">Товары не распознаны</td></tr>`;
 
       emailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1d2c1; border-radius: 12px; background-color: #fdfbf7;">
           <div style="text-align: center; border-bottom: 2px solid #8c6239; padding-bottom: 15px; margin-bottom: 20px;">
-            <h1 style="color: #4a2c11; margin: 0; font-size: 24px;">☕ Нове замовлення Coffeetime</h1>
+            <h1 style="color: #4a2c11; margin: 0; font-size: 24px;">☕ Новое замовлення Coffeetime</h1>
           </div>
           <div style="margin-bottom: 20px;">
             <h3 style="color: #8c6239; border-bottom: 1px solid #e8dec9; padding-bottom: 5px;">Дані клієнта:</h3>
-            <p><strong>Ім'я:</strong> ${info.name || "Не вказано"}</p>
-            <p><strong>Телефон:</strong> ${info.phone || "Не вказано"}</p>
+            <p><strong>Ім'я:</strong> ${clientName}</p>
+            <p><strong>Телефон:</strong> ${clientPhone}</p>
           </div>
           <div style="margin-bottom: 20px;">
             <table style="width: 100%; border-collapse: collapse;">
@@ -225,8 +234,8 @@ app.post("/api/order", async (req, res) => {
     }
 
     const isSent = await sendEmailViaGoogleScript(finalEmail, recipeName ? `📖 Рецепт: ${recipeName}` : `☕ Coffeetime: Нове замовлення`, emailHtml);
-    if (isSent) return res.json({ success: true, message: "Надіслано успішно!" });
-    throw new Error("Google Скрипт не зміг надіслати лист");
+    if (isSent) return res.json({ success: true, message: "Отправлено успешно!" });
+    throw new Error("Google Скрипт не смог отправить письмо");
   } catch (error: any) {
     res.json({ success: true, simulated: true, error: error.message });
   }
@@ -242,18 +251,18 @@ app.post("/api/contact", async (req, res) => {
 
     const isSent = await sendEmailViaGoogleScript(targetEmail, subject, emailHtml);
     if (isSent) return res.json({ success: true, message: "Повідомлення надіслано!" });
-    throw new Error("Google Скрипт повернув помилку");
+    throw new Error("Google Скрипт вернул ошибку");
   } catch (error: any) {
     res.status(500).json({ error: "Failed to process request" });
   }
 });
 
-// Перенаправлення SPA-роутів на фронтенд
+// Перенаправление SPA-роутов на фронтенд
 app.get("*", (req, res) => {
   res.sendFile(path.join(currentDir, "dist", "index.html"));
 });
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`Сервер працює на порту ${PORT}`);
+  console.log(`Сервер запущен на порту ${PORT}`);
 });
