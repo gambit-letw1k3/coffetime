@@ -64,7 +64,7 @@ const sendEmailViaGoogleScript = async (to: string, subject: string, html: strin
         to: to,
         subject: subject,
         html: html,
-        token: "MySuperSecretToken123" // Має збігатися з токеном у Google Скрипті
+        token: "MySuperSecretToken123"
       })
     });
 
@@ -78,19 +78,18 @@ const sendEmailViaGoogleScript = async (to: string, subject: string, html: strin
 
 // === МАРШРУТИ АДМІН-ПАНЕЛІ ===
 
-// Маршрут для авторизації в адмінці (точно під твій запит з фронтенду)
-app.post("/api/admin/login", (req, res) => {
+// 1. ПЕРЕВІРКА ПАРОЛЮ (Фронтенд робить запит сюди)
+app.post("/api/admin/credentials", (req, res) => {
   const { username, password } = req.body;
   
-  // Логін та пароль для входу
   if (username === "admin" && password === "admin123") {
     return res.json({ success: true, token: "admin-token-xyz" });
   }
   res.status(401).json({ error: "Невірний логін або пароль" });
 });
 
-// Отримання даних для адмінки та фронтенду
-app.get("/api/db", (req, res) => {
+// 2. ОТРИМАННЯ ДАНИХ ТОВАРІВ/РЕЦЕПТІВ
+app.get("/api/admin/data", (req, res) => {
   const db = readDb();
   if (!db) {
     return res.status(500).json({ error: "Не вдалося завантажити базу даних" });
@@ -98,8 +97,8 @@ app.get("/api/db", (req, res) => {
   res.json(db);
 });
 
-// Збереження оновлених даних з адмінки
-app.post("/api/db", (req, res) => {
+// 3. ЗБЕРЕЖЕННЯ ЗМІН З АДМІНКИ
+app.post("/api/admin/data", (req, res) => {
   const success = writeDb(req.body);
   if (success) {
     res.json({ success: true });
