@@ -64,7 +64,7 @@ const sendEmailViaGoogleScript = async (to: string, subject: string, html: strin
         to: to,
         subject: subject,
         html: html,
-        token: "MySuperSecretToken123"
+        token: "MySuperSecretToken123" // Має збігатися з токеном у Google Скрипті
       })
     });
 
@@ -78,11 +78,11 @@ const sendEmailViaGoogleScript = async (to: string, subject: string, html: strin
 
 // === МАРШРУТИ АДМІН-ПАНЕЛІ ===
 
-// Маршрут для авторизації в адмінці
+// Маршрут для авторизації в адмінці (точно під твій запит з фронтенду)
 app.post("/api/admin/login", (req, res) => {
   const { username, password } = req.body;
   
-  // Логін та пароль прописані тут
+  // Логін та пароль для входу
   if (username === "admin" && password === "admin123") {
     return res.json({ success: true, token: "admin-token-xyz" });
   }
