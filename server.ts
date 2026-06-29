@@ -78,18 +78,19 @@ const sendEmailViaGoogleScript = async (to: string, subject: string, html: strin
 
 // === МАРШРУТИ АДМІН-ПАНЕЛІ ===
 
-// 1. ПЕРЕВІРКА ПАРОЛЮ (Фронтенд робить запит сюди)
-app.post("/api/admin/credentials", (req, res) => {
+// Маршрут для авторизації в адмінці
+app.post("/api/admin/login", (req, res) => {
   const { username, password } = req.body;
   
+  // Логін та пароль прописані тут
   if (username === "admin" && password === "admin123") {
     return res.json({ success: true, token: "admin-token-xyz" });
   }
   res.status(401).json({ error: "Невірний логін або пароль" });
 });
 
-// 2. ОТРИМАННЯ ДАНИХ ТОВАРІВ/РЕЦЕПТІВ
-app.get("/api/admin/data", (req, res) => {
+// Отримання даних для адмінки та фронтенду
+app.get("/api/db", (req, res) => {
   const db = readDb();
   if (!db) {
     return res.status(500).json({ error: "Не вдалося завантажити базу даних" });
@@ -97,8 +98,8 @@ app.get("/api/admin/data", (req, res) => {
   res.json(db);
 });
 
-// 3. ЗБЕРЕЖЕННЯ ЗМІН З АДМІНКИ
-app.post("/api/admin/data", (req, res) => {
+// Збереження оновлених даних з адмінки
+app.post("/api/db", (req, res) => {
   const success = writeDb(req.body);
   if (success) {
     res.json({ success: true });
