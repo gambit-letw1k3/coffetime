@@ -79,7 +79,7 @@ const sendEmailViaGoogleScript = async (to: string, subject: string, html: strin
 // === МАРШРУТИ АДМІН-ПАНЕЛІ ===
 
 // Маршрут для авторизації в адмінці
-app.post("/api/login", (req, res) => {
+app.post("/api/admin/login", (req, res) => {
   const { username, password } = req.body;
   
   // Логін та пароль прописані тут
