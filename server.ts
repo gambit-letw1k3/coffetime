@@ -81,12 +81,35 @@ const sendEmailViaGoogleScript = async (to: string, subject: string, html: strin
 // Маршрут для авторизації в адмінці
 app.post("/api/admin/login", (req, res) => {
   const { username, password } = req.body;
+  const db = readDb();
   
-  // Логін та пароль прописані тут
-  if (username === "admin" && password === "admin123") {
+  // Перевірка, чи змінені логін/пароль є в БД, інакше дефолтні admin/admin123
+  const validUsername = db?.credentials?.username || "admin";
+  const validPassword = db?.credentials?.password || "admin123";
+  
+  if (username === validUsername && password === validPassword) {
     return res.json({ success: true, token: "admin-token-xyz" });
   }
   res.status(401).json({ error: "Невірний логін або пароль" });
+});
+
+// Маршрут для зміни логіну та паролю (Виправлено 404 error)
+app.post("/api/admin/credentials", (req, res) => {
+  const { username, password } = req.body;
+  
+  if (!username || !password) {
+    return res.status(400).json({ error: "Логін та пароль обов'язкові" });
+  }
+
+  const db = readDb() || {};
+  db.credentials = { username, password };
+
+  const success = writeDb(db);
+  if (success) {
+    res.json({ success: true, message: "Дані доступу успішно оновлено!" });
+  } else {
+    res.status(500).json({ error: "Не вдалося зберегти нові дані доступу" });
+  }
 });
 
 // Отримання даних для адмінки та фронтенду
@@ -98,8 +121,9 @@ app.get("/api/db", (req, res) => {
   res.json(db);
 });
 
-// Збереження оновлених даних з адмінки
-app.post("/api/db", (req, res) => {
+// Збереження оновлених даних з адмінки (Сумісність з двома ендпоїнтами фронту)
+app.post(["/api/db", "/api/admin/data"], (req, res) => {
+  // Якщо фронтенд передає дані контенту прямо в body, записуємо їх
   const success = writeDb(req.body);
   if (success) {
     res.json({ success: true });
