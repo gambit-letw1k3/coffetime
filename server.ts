@@ -80,7 +80,7 @@ app.post("/api/admin/login", (req, res) => {
   const { username, password } = req.body;
   const db = readDb();
   
-  // Якщо в БД ще немає збережених креде can-шелів, використовуємо дефолтні
+  // Якщо в БД ще немає збережених credentials, використовуємо дефолтні
   const validUsername = db?.credentials?.username || "admin";
   const validPassword = db?.credentials?.password || "admin123";
   
@@ -100,7 +100,7 @@ app.post("/api/admin/credentials", (req, res) => {
 
   const db = readDb() || {};
   
-  // Оновлюємо ТІЛЬКИ вузол credentials, зберігаючи решту бази даних
+  // Оновлюємо ТІЛЬКИ вузол credentials, зберігаючи решту структури бази даних
   db.credentials = { username, password };
 
   if (writeDb(db)) {
@@ -112,37 +112,44 @@ app.post("/api/admin/credentials", (req, res) => {
 
 // 3. Отримання даних для адмінки та фронтенду
 app.get("/api/db", (req, res) => {
-  const db = readDb();
-  // Повертаємо базу даних. Якщо вона порожня, віддаємо об'єкт
-  res.json(db || {});
+  const db = readDb() || {};
+  // Повертаємо всю базу даних на запит клієнта
+  res.json(db);
 });
 
-// 4. Збереження оновленого контенту сайту (БЕЗ затирання пароля!)
+// 4. Гнучке збереження оновленого контенту сайту (БЕЗ затирання пароля та полів!)
 app.post(["/api/db", "/api/admin/data"], (req, res) => {
   const db = readDb() || {};
   const incomingData = req.body;
 
-  // Інтелектуальне злиття: перевіряємо, чи фронтенд прислав обгортку, чи чистий контент
-  if (incomingData && incomingData.credentials) {
-    // Якщо фронт випадково прислав усе разом
-    Object.assign(db, incomingData);
-  } else {
-    // Зберігаємо старі credentials, а решту полів (товари, контент) оновлюємо з req.body
-    const currentCredentials = db.credentials;
+  // КРОК 1: Завжди резервуємо діючі паролі від затирання
+  const currentCredentials = db.credentials;
+
+  // КРОК 2: Визначаємо структуру отриманих даних
+  if (incomingData && typeof incomingData === "object") {
     
-    // Якщо дані прийшли всередині ключа data (специфіка деяких CMS-фронтів)
-    if (incomingData.data) {
-      Object.assign(db, incomingData.data);
-    } else {
+    // Сценарій А: Якщо фронтенд прислав дані всередині ключа { data: ... }
+    if (incomingData.data !== undefined) {
+      if (typeof incomingData.data === "object" && !Array.isArray(incomingData.data)) {
+        Object.assign(db, incomingData.data);
+      } else {
+        db.data = incomingData.data;
+      }
+    } 
+    // Сценарій Б: Якщо фронтенд передав чистий плоский об'єкт
+    else {
+      // Щоб уникнути накопичення сміття, оновлюємо тільки кореневі ключі контенту,
+      // які передав фронтенд (наприклад: products, settings, reviews)
       Object.assign(db, incomingData);
-    }
-    
-    // Повертаємо паролі на місце, щоб вони не стерлися
-    if (currentCredentials) {
-      db.credentials = currentCredentials;
     }
   }
 
+  // КРОК 3: Примусово повертаємо паролі на місце
+  if (currentCredentials) {
+    db.credentials = currentCredentials;
+  }
+
+  // КРОК 4: Записуємо оновлену структуру у файл
   if (writeDb(db)) {
     res.json({ success: true });
   } else {
